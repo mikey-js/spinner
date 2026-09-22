@@ -82,6 +82,7 @@ textarea {
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+  flex: 1;
 }
 
 .brand-mark {
@@ -93,16 +94,60 @@ textarea {
   flex-shrink: 0;
 }
 
-.brand h1 {
+.wheel-title-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.wheel-title,
+.wheel-title-edit {
   margin: 0;
   font-family: var(--display);
   font-size: clamp(1.15rem, 2.4vw, 1.7rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  color: var(--text);
+}
+
+.wheel-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-radius: 8px;
+  padding: 0.12rem 0.4rem;
+  margin-left: -0.4rem;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.wheel-title.is-editable {
+  cursor: text;
+}
+
+.wheel-title.is-editable:hover,
+.wheel-title.is-editable:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+.wheel-title-edit {
+  display: block;
+  width: min(100%, 28rem);
+  max-width: calc(100vw - 10rem);
+  box-sizing: border-box;
+  padding: 0.12rem 0.4rem;
+  margin-left: -0.4rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.18);
+}
+
+.wheel-title-edit[hidden] {
+  display: none;
 }
 
 .top-actions {
@@ -971,7 +1016,8 @@ body.is-spinning .hint {
     padding: 0.75rem 0.75rem 2rem;
   }
 
-  .brand h1 {
+  .wheel-title,
+  .wheel-title-edit {
     font-size: 1.05rem;
   }
 

@@ -12,7 +12,19 @@
       <header class="topbar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true"></span>
-          <h1 id="wheel-title">Untitled</h1>
+          <div class="wheel-title-wrap">
+            <h1 id="wheel-title" class="wheel-title">Untitled</h1>
+            <input
+              type="text"
+              id="wheel-title-edit"
+              class="wheel-title-edit"
+              maxlength="80"
+              hidden
+              spellcheck="false"
+              autocomplete="off"
+              aria-label="Rename wheel"
+            />
+          </div>
         </div>
         <div class="top-actions">
           <button type="button" class="icon-btn" id="btn-mute" title="Mute" aria-label="Mute sounds">

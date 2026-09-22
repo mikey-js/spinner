@@ -39,6 +39,7 @@ const ICONS = {
 
 const els = {
   title: document.getElementById("wheel-title"),
+  titleEdit: document.getElementById("wheel-title-edit"),
   canvas: document.getElementById("wheel"),
   pointer: document.getElementById("pointer"),
   spin: document.getElementById("btn-spin"),
@@ -98,6 +99,7 @@ let state = null;
 let muted = false;
 let lastWinner = null;
 let dragEntryId = null;
+let renamingTitle = false;
 
 function isViewingEphemeral() {
   return !!ephemeral && !library?.activeId;
@@ -173,10 +175,67 @@ function persist() {
   renderLibrary();
 }
 
+function normalizeTitle(value) {
+  return String(value || "").trim() || "Untitled";
+}
+
+function titleEditable() {
+  return !catalogLocked();
+}
+
 function applyTitle() {
-  els.title.textContent = state.title || "Spin Wheel";
-  document.title = state.title || "Spin Wheel";
-  els.titleInput.value = state.title || "";
+  const name = normalizeTitle(state.title);
+  state.title = name;
+  els.title.textContent = name;
+  document.title = name;
+  els.titleInput.value = name;
+  if (!renamingTitle) els.titleEdit.value = name;
+  syncTitleEditUi();
+}
+
+function syncTitleEditUi() {
+  const canEdit = titleEditable();
+  els.title.classList.toggle("is-editable", canEdit);
+  els.title.tabIndex = canEdit ? 0 : -1;
+  els.title.title = canEdit ? "Click to rename" : "";
+  els.title.setAttribute("aria-label", canEdit ? `${els.title.textContent} (click to rename)` : els.title.textContent);
+  els.titleInput.disabled = !canEdit;
+  if (!canEdit && renamingTitle) cancelTitleEdit();
+}
+
+function startTitleEdit() {
+  if (!titleEditable() || renamingTitle) return;
+  renamingTitle = true;
+  els.title.hidden = true;
+  els.titleEdit.hidden = false;
+  els.titleEdit.value = state.title || "";
+  requestAnimationFrame(() => {
+    els.titleEdit.focus();
+    els.titleEdit.select();
+  });
+}
+
+function commitTitleEdit() {
+  if (!renamingTitle) return;
+  renamingTitle = false;
+  const next = normalizeTitle(els.titleEdit.value);
+  els.title.hidden = false;
+  els.titleEdit.hidden = true;
+  if (next !== state.title) {
+    state.title = next;
+    applyTitle();
+    persist();
+  } else {
+    applyTitle();
+  }
+}
+
+function cancelTitleEdit() {
+  if (!renamingTitle) return;
+  renamingTitle = false;
+  els.title.hidden = false;
+  els.titleEdit.hidden = true;
+  els.titleEdit.value = state.title || "";
 }
 
 function syncCatalogLockUi() {
@@ -186,6 +245,7 @@ function syncCatalogLockUi() {
   els.addInput.disabled = locked;
   els.addBtn.disabled = locked;
   document.getElementById("tab-entries")?.classList.toggle("catalog-locked", locked);
+  syncTitleEditUi();
 
   const { active, total } = entryCounts();
   const hasRemoved = active < total;
@@ -1156,8 +1216,10 @@ async function boot() {
 
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space" && !e.repeat) {
+      if (renamingTitle) return;
       const tag = document.activeElement?.tagName;
       if (tag === "TEXTAREA" || tag === "INPUT") return;
+      if (document.activeElement === els.title) return;
       e.preventDefault();
       doSpin();
     }
@@ -1215,10 +1277,31 @@ async function boot() {
     persist();
   });
   els.titleInput.addEventListener("change", () => {
-    state.title = els.titleInput.value.trim() || "Spin Wheel";
+    if (!titleEditable()) return;
+    state.title = normalizeTitle(els.titleInput.value);
     applyTitle();
     persist();
   });
+
+  els.title.addEventListener("click", () => startTitleEdit());
+  els.title.addEventListener("keydown", (e) => {
+    if (!titleEditable()) return;
+    if (e.key === "Enter" || e.key === "F2") {
+      e.preventDefault();
+      startTitleEdit();
+    }
+  });
+  els.titleEdit.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitTitleEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelTitleEdit();
+    }
+  });
+  els.titleEdit.addEventListener("blur", () => commitTitleEdit());
 
   els.mute.addEventListener("click", () => {
     muted = !muted;
