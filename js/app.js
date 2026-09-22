@@ -18,6 +18,8 @@ import {
   decodeShareFromLocation,
   clearShareFromLocation,
   getShareBaseUrl,
+  isPlayView,
+  withPlayView,
   SHARE_URL_SOFT_LIMIT,
 } from "./share.js";
 import { qrDataUrl } from "./qr.js";
@@ -61,6 +63,7 @@ const els = {
   resultsEmpty: document.getElementById("results-empty"),
   clearResults: document.getElementById("btn-clear-results"),
   autoRemove: document.getElementById("opt-auto-remove"),
+  announceWinner: document.getElementById("opt-announce-winner"),
   confetti: document.getElementById("opt-confetti"),
   sounds: document.getElementById("opt-sounds"),
   spinTime: document.getElementById("opt-spin-time"),
@@ -72,15 +75,20 @@ const els = {
   saveAsNew: document.getElementById("btn-save-as-new"),
   newWheel: document.getElementById("btn-new-wheel"),
   wheelLibrary: document.getElementById("wheel-library"),
+  wheelDock: document.getElementById("wheel-dock"),
+  viewerDock: document.getElementById("viewer-dock"),
+  viewerShare: document.getElementById("btn-viewer-share"),
+  removedSection: document.getElementById("removed-section"),
   winnerOverlay: document.getElementById("winner-on-wheel"),
   winnerText: document.getElementById("winner-text"),
   dismissWinner: document.getElementById("btn-dismiss-winner"),
-  removeWinner: document.getElementById("btn-remove-winner"),
   confettiCanvas: document.getElementById("confetti"),
   shareModal: document.getElementById("share-modal"),
   shareUrl: document.getElementById("share-url"),
   shareQr: document.getElementById("share-qr"),
   shareStatus: document.getElementById("share-status"),
+  sharePlay: document.getElementById("opt-share-play"),
+  sharePlayOption: document.getElementById("share-play-option"),
   copyShare: document.getElementById("btn-copy-share"),
   closeShare: document.getElementById("btn-close-share"),
 };
@@ -100,6 +108,10 @@ let muted = false;
 let lastWinner = null;
 let dragEntryId = null;
 let renamingTitle = false;
+/** Results-only UI from ?play=1 */
+let playView = false;
+/** Active share modal rebuild context */
+let shareModalContext = { data: null, forcePlay: false };
 
 function isViewingEphemeral() {
   return !!ephemeral && !library?.activeId;
@@ -258,14 +270,39 @@ function syncCatalogLockUi() {
       : "No removed items to restore";
 }
 
+function syncRemovedSectionUi() {
+  if (!els.removedSection) return;
+  els.removedSection.hidden = !state.settings.autoRemoveWinner;
+}
+
+function applyPlayViewUi() {
+  playView = isPlayView();
+  document.body.classList.toggle("is-play-view", playView);
+  if (els.viewerDock) els.viewerDock.hidden = !playView;
+  if (!playView) return;
+
+  document.querySelectorAll(".tab").forEach((t) => {
+    const isResults = t.dataset.tab === "results";
+    t.classList.toggle("active", isResults);
+    t.setAttribute("aria-selected", isResults ? "true" : "false");
+  });
+  document.querySelectorAll(".tab-pane").forEach((pane) => {
+    const match = pane.id === "tab-results";
+    pane.hidden = !match;
+    pane.classList.toggle("active", match);
+  });
+}
+
 function syncSettingsUi() {
   const s = state.settings;
+  if (els.announceWinner) els.announceWinner.checked = !!s.showWinnerResult;
   els.autoRemove.checked = !!s.autoRemoveWinner;
-  els.confetti.checked = s.showConfetti !== false;
-  els.sounds.checked = !muted && s.sounds !== false;
-  els.spinTime.value = String(s.spinTime || 7);
-  els.spinTimeValue.textContent = String(s.spinTime || 7);
-  document.body.classList.toggle("is-muted", muted || s.sounds === false);
+  els.confetti.checked = !!s.showConfetti;
+  els.sounds.checked = !muted && !!s.sounds;
+  els.spinTime.value = String(s.spinTime || 5);
+  els.spinTimeValue.textContent = String(s.spinTime || 5);
+  document.body.classList.toggle("is-muted", muted || !s.sounds);
+  syncRemovedSectionUi();
   syncCatalogLockUi();
 }
 
@@ -743,18 +780,13 @@ function wheelDataForShare(id) {
   return null;
 }
 
-async function shareWheelData(data) {
+async function shareWheelData(data, { forcePlay = false } = {}) {
   if (!data?.entries?.length) {
     alert("Add at least one entry before sharing.");
     return;
   }
   try {
-    const url = await encodeShareUrl({
-      title: data.title,
-      entries: data.entries,
-      settings: data.settings,
-    });
-    await openShareModal(url, data.title);
+    await openShareModal(data, { forcePlay });
   } catch (err) {
     console.error(err);
     alert("Could not build a share link for this wheel.");
@@ -777,21 +809,35 @@ function closeShareModal() {
   els.shareStatus.hidden = true;
   els.shareStatus.textContent = "";
   els.shareStatus.classList.remove("is-warn");
+  shareModalContext = { data: null, forcePlay: false };
 }
 
-async function openShareModal(url, title) {
-  els.shareModal.hidden = false;
+async function rebuildShareModal() {
+  const { data, forcePlay } = shareModalContext;
+  if (!data) return;
+
+  let url = await encodeShareUrl({
+    title: data.title,
+    entries: data.entries,
+    settings: data.settings,
+  });
+  if (forcePlay || els.sharePlay?.checked) {
+    url = withPlayView(url);
+  }
+
   els.shareUrl.value = url;
   els.shareStatus.hidden = true;
-  document.getElementById("share-modal-title").textContent = `Share “${title || "wheel"}”`;
+  els.shareStatus.textContent = "";
+  els.shareStatus.classList.remove("is-warn");
   els.shareQr.removeAttribute("src");
+
   try {
     els.shareQr.src = await qrDataUrl(url, 4, 2);
   } catch (err) {
     console.error(err);
     els.shareStatus.hidden = false;
     els.shareStatus.classList.add("is-warn");
-    els.shareStatus.textContent = "QR code could not be generated — you can still copy the link.";
+    els.shareStatus.textContent = "QR code could not be generated - you can still copy the link.";
   }
   if (url.length > SHARE_URL_SOFT_LIMIT) {
     els.shareStatus.hidden = false;
@@ -799,6 +845,20 @@ async function openShareModal(url, title) {
     els.shareStatus.textContent =
       "This link is very long. It should still work, but some apps truncate big QR codes / URLs.";
   }
+}
+
+async function openShareModal(data, { forcePlay = false } = {}) {
+  // In play=1 mode, keep Results-only on (and in the URL) but hide the checkbox.
+  const lockPlay = forcePlay || playView;
+  shareModalContext = { data, forcePlay: lockPlay };
+  els.shareModal.hidden = false;
+  if (els.sharePlayOption) els.sharePlayOption.hidden = lockPlay;
+  if (els.sharePlay) {
+    els.sharePlay.checked = lockPlay;
+    els.sharePlay.disabled = lockPlay;
+  }
+  document.getElementById("share-modal-title").textContent = `Share "${data.title || "wheel"}"`;
+  await rebuildShareModal();
 }
 
 function safeClearShareFromLocation() {
@@ -866,7 +926,6 @@ function showWinner(entry) {
   lastWinner = entry;
   els.winnerText.textContent = entry.value;
   els.winnerOverlay.hidden = false;
-  els.removeWinner.hidden = !state.settings.showRemoveButton;
 }
 
 function setSpinning(isSpinning) {
@@ -883,12 +942,12 @@ async function doSpin() {
 
   wheel.onTick = () => {
     syncPointerColor();
-    if (!muted && state.settings.sounds !== false) {
+    if (!muted && state.settings.sounds) {
       playTick((state.settings.volume || 37) / 100);
     }
   };
 
-  const duration = Number(state.settings.spinTime) || 7;
+  const duration = Number(state.settings.spinTime) || 5;
   const winner = await wheel.spin(duration);
   setSpinning(false);
   syncPointerColor();
@@ -906,14 +965,14 @@ async function doSpin() {
   ].slice(0, 100);
   renderResults();
 
-  if (!muted && state.settings.sounds !== false) {
+  if (!muted && state.settings.sounds) {
     playWin((state.settings.winnerVolume || 80) / 100);
   }
-  if (state.settings.showConfetti !== false) {
+  if (state.settings.showConfetti) {
     burstConfetti([...(state.settings.themeColors || PALETTE), "#fbbf24", "#8b7cf6"]);
   }
 
-  if (state.settings.winnerDisplayMode === "on-wheel" || state.settings.showWinnerResult !== false) {
+  if (state.settings.showWinnerResult) {
     showWinner(winner);
   }
 
@@ -927,6 +986,7 @@ async function doSpin() {
 function bindTabs() {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
+      if (playView && tab.dataset.tab !== "results") return;
       const name = tab.dataset.tab;
       document.querySelectorAll(".tab").forEach((t) => {
         t.classList.toggle("active", t === tab);
@@ -942,20 +1002,13 @@ function bindTabs() {
 }
 
 function hydrateFromPayload(data, results = []) {
+  const incoming = data.customSettings || data.settings || {};
   const settings = {
-    showConfetti: true,
-    sounds: true,
-    spinTime: 7,
-    autoRemoveWinner: false,
-    showRemoveButton: true,
-    pointerMatchSegmentColor: true,
-    winnerDisplayMode: "on-wheel",
-    showWinnerResult: true,
-    volume: 37,
-    winnerVolume: 80,
-    themeColors: PALETTE,
-    ...(data.customSettings || data.settings || {}),
+    ...blankWheelSettings(),
+    ...incoming,
   };
+  // Older saved wheels omit the announce flag - keep announcing on for them.
+  if (!("showWinnerResult" in incoming)) settings.showWinnerResult = true;
   if (settings.volume === 0) settings.sounds = false;
 
   state = {
@@ -1059,14 +1112,13 @@ function saveCurrentAsNew() {
 
 function blankWheelSettings() {
   return {
-    showConfetti: true,
-    sounds: true,
-    spinTime: 7,
+    showConfetti: false,
+    sounds: false,
+    spinTime: 5,
     autoRemoveWinner: false,
-    showRemoveButton: true,
     pointerMatchSegmentColor: true,
     winnerDisplayMode: "on-wheel",
-    showWinnerResult: true,
+    showWinnerResult: false,
     volume: 37,
     winnerVolume: 80,
     themeColors: PALETTE,
@@ -1175,6 +1227,7 @@ async function boot() {
   }
 
   loadActiveWheel();
+  applyPlayViewUi();
   bindTabs();
   bindEntryDnD();
 
@@ -1204,6 +1257,17 @@ async function boot() {
       els.shareStatus.textContent = "Select the link and copy it manually.";
     }
   });
+  if (els.sharePlay) {
+    els.sharePlay.addEventListener("change", () => {
+      rebuildShareModal().catch((err) => console.error(err));
+    });
+  }
+  if (els.viewerShare) {
+    els.viewerShare.addEventListener("click", () => {
+      persist();
+      shareWheelData(snapshotFromState(), { forcePlay: true }).catch((err) => console.error(err));
+    });
+  }
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !els.shareModal.hidden) closeShareModal();
   });
@@ -1259,8 +1323,16 @@ async function boot() {
 
   els.autoRemove.addEventListener("change", () => {
     state.settings.autoRemoveWinner = els.autoRemove.checked;
+    syncRemovedSectionUi();
     persist();
   });
+  if (els.announceWinner) {
+    els.announceWinner.addEventListener("change", () => {
+      state.settings.showWinnerResult = els.announceWinner.checked;
+      if (!els.announceWinner.checked) hideWinner();
+      persist();
+    });
+  }
   els.confetti.addEventListener("change", () => {
     state.settings.showConfetti = els.confetti.checked;
     persist();
@@ -1325,9 +1397,6 @@ async function boot() {
   });
 
   els.dismissWinner.addEventListener("click", hideWinner);
-  els.removeWinner.addEventListener("click", () => {
-    if (lastWinner) softRemoveEntryById(lastWinner.id);
-  });
 
   els.exportBtn.addEventListener("click", () => {
     downloadJson(`${(state.title || "wheel").replace(/\s+/g, "-").toLowerCase()}.json`, {

@@ -61,7 +61,6 @@
               <p class="winner-text" id="winner-text"></p>
               <div class="winner-actions">
                 <button type="button" class="btn ghost" id="btn-dismiss-winner">Close</button>
-                <button type="button" class="btn danger" id="btn-remove-winner">Remove</button>
               </div>
             </div>
           </div>
@@ -69,9 +68,12 @@
         </section>
 
         <aside class="panel" id="side-panel">
-          <section class="wheel-dock" aria-label="Your wheels">
+          <section class="wheel-dock" id="wheel-dock" data-editor-only aria-label="Your wheels">
             <h2 class="panel-heading">Your wheels</h2>
-            <p class="panel-note">Click a wheel to open it. Saved in this browser. <code>/default</code> opens the classroom wheel for this visit only — Duplicate to save it.</p>
+            <p class="panel-note">
+              Click a wheel to open it. Saved in this browser.
+              <code>/default</code> opens the classroom wheel for this visit only - Duplicate to save it.
+            </p>
             <div class="wheel-library" id="wheel-library" role="radiogroup" aria-label="Saved wheels"></div>
             <div class="row gap">
               <button type="button" class="btn secondary" id="btn-new-wheel">New wheel</button>
@@ -82,20 +84,33 @@
             </div>
           </section>
 
-          <div class="tabs" role="tablist">
-            <button type="button" class="tab active" data-tab="entries" role="tab" aria-selected="true">Entries</button>
-            <button type="button" class="tab" data-tab="results" role="tab" aria-selected="false">Results</button>
-            <button type="button" class="tab" data-tab="settings" role="tab" aria-selected="false">Settings</button>
+          <section class="viewer-dock" id="viewer-dock" hidden aria-label="Share">
+            <button type="button" class="btn secondary" id="btn-viewer-share">Share</button>
+          </section>
+
+          <div class="tabs" id="panel-tabs" role="tablist">
+            <button type="button" class="tab active" data-tab="results" role="tab" aria-selected="true">Results</button>
+            <button type="button" class="tab" data-tab="entries" data-editor-only role="tab" aria-selected="false">Entries</button>
+            <button type="button" class="tab" data-tab="settings" data-editor-only role="tab" aria-selected="false">Settings</button>
           </div>
 
-          <div class="tab-pane active" id="tab-entries" role="tabpanel">
+          <div class="tab-pane active" id="tab-results" role="tabpanel">
+            <div class="row between">
+              <h2 class="panel-heading">Spin history</h2>
+              <button type="button" class="btn ghost" id="btn-clear-results">Clear</button>
+            </div>
+            <ol class="results-list" id="results-list"></ol>
+            <p class="empty" id="results-empty">No spins yet. Give the wheel a whirl.</p>
+          </div>
+
+          <div class="tab-pane" id="tab-entries" role="tabpanel" hidden data-editor-only>
             <p class="panel-note" id="entries-lock-note" hidden>
               Default wheel from <code>/default</code> or a share link is session-only (not saved).
               Duplicate it into Your wheels to edit or keep it.
             </p>
 
             <form class="add-entry-row" id="add-entry-form">
-              <input type="text" id="add-entry-input" maxlength="200" placeholder="Add a new entry…" autocomplete="off" />
+              <input type="text" id="add-entry-input" maxlength="200" placeholder="Add a new entry..." autocomplete="off" />
               <button type="submit" class="btn secondary icon-action" id="btn-add-entry" title="Add entry" aria-label="Add entry">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M12 5v14M5 12h14" />
@@ -117,47 +132,44 @@
                 <button type="button" class="btn ghost" id="btn-shuffle">Shuffle active</button>
               </div>
 
-              <section class="entry-column is-inactive" aria-labelledby="inactive-heading">
-                <div class="entry-column-head">
-                  <h2 class="panel-heading" id="inactive-heading">Removed</h2>
-                  <span class="entry-count" id="inactive-count">0</span>
-                </div>
-                <ul class="entry-list" id="inactive-list" data-zone="inactive"></ul>
-                <p class="entry-drop-hint">Drop here to soft-remove (kept in JSON)</p>
-              </section>
+              <div id="removed-section">
+                <section class="entry-column is-inactive" aria-labelledby="inactive-heading">
+                  <div class="entry-column-head">
+                    <h2 class="panel-heading" id="inactive-heading">Removed</h2>
+                    <span class="entry-count" id="inactive-count">0</span>
+                  </div>
+                  <ul class="entry-list" id="inactive-list" data-zone="inactive"></ul>
+                  <p class="entry-drop-hint">Drop here to soft-remove (kept in JSON)</p>
+                </section>
 
-              <div class="entry-zone-actions">
-                <button type="button" class="btn ghost" id="btn-restore-removed">Restore all removed</button>
+                <div class="entry-zone-actions">
+                  <button type="button" class="btn ghost" id="btn-restore-removed">Restore all removed</button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="tab-pane" id="tab-results" role="tabpanel" hidden>
-            <div class="row between">
-              <h2 class="panel-heading">Spin history</h2>
-              <button type="button" class="btn ghost" id="btn-clear-results">Clear</button>
-            </div>
-            <ol class="results-list" id="results-list"></ol>
-            <p class="empty" id="results-empty">No spins yet. Give the wheel a whirl.</p>
-          </div>
-
-          <div class="tab-pane" id="tab-settings" role="tabpanel" hidden>
+          <div class="tab-pane" id="tab-settings" role="tabpanel" hidden data-editor-only>
             <h2 class="panel-heading">Spin behavior</h2>
+            <label class="toggle">
+              <input type="checkbox" id="opt-announce-winner" />
+              <span>Announce winner after spin</span>
+            </label>
             <label class="toggle">
               <input type="checkbox" id="opt-auto-remove" />
               <span>Auto-remove winner after spin</span>
             </label>
             <label class="toggle">
-              <input type="checkbox" id="opt-confetti" checked />
+              <input type="checkbox" id="opt-confetti" />
               <span>Confetti celebration</span>
             </label>
             <label class="toggle">
-              <input type="checkbox" id="opt-sounds" checked />
+              <input type="checkbox" id="opt-sounds" />
               <span>Tick &amp; win sounds</span>
             </label>
             <label class="field-label" for="opt-spin-time">Spin duration (seconds)</label>
-            <input type="range" id="opt-spin-time" min="3" max="12" step="1" value="7" />
-            <p class="range-value"><span id="spin-time-value">7</span>s</p>
+            <input type="range" id="opt-spin-time" min="3" max="12" step="1" value="5" />
+            <p class="range-value"><span id="spin-time-value">5</span>s</p>
             <label class="field-label" for="opt-title">Wheel title</label>
             <input type="text" id="opt-title" maxlength="80" />
           </div>
@@ -179,8 +191,12 @@
           </button>
         </div>
         <p class="panel-note" id="share-modal-desc">
-          Anyone with this link gets this wheel as their default — nothing is stored on a server.
+          Anyone with this link gets this wheel as their default - nothing is stored on a server.
         </p>
+        <label class="toggle" id="share-play-option">
+          <input type="checkbox" id="opt-share-play" />
+          <span>Results-only link (hide Entries, Settings, and Your wheels)</span>
+        </label>
         <div class="share-qr-wrap">
           <img id="share-qr" alt="QR code for shared wheel" width="220" height="220" />
         </div>

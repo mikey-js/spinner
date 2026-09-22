@@ -63,8 +63,9 @@ export function buildSharePayload(wheel) {
     payload.s = {
       st: s.spinTime,
       ar: s.autoRemoveWinner ? 1 : 0,
-      cf: s.showConfetti === false ? 0 : 1,
-      so: s.sounds === false ? 0 : 1,
+      wr: s.showWinnerResult ? 1 : 0,
+      cf: s.showConfetti ? 1 : 0,
+      so: s.sounds ? 1 : 0,
       vol: s.volume,
       wv: s.winnerVolume,
     };
@@ -97,12 +98,12 @@ export function expandSharePayload(payload) {
   const settings = {
     showConfetti: s.cf !== 0,
     sounds: s.so !== 0,
-    spinTime: Number(s.st) || 7,
+    spinTime: s.st != null ? Number(s.st) || 5 : 7,
     autoRemoveWinner: !!s.ar,
-    showRemoveButton: true,
     pointerMatchSegmentColor: true,
     winnerDisplayMode: "on-wheel",
-    showWinnerResult: true,
+    // Older shares omit wr - keep announcing on for backwards compatibility.
+    showWinnerResult: s.wr == null ? true : !!s.wr,
     volume: s.vol ?? 37,
     winnerVolume: s.wv ?? 80,
     themeColors: ["#063893", "#d2ecf2", "#fefefe"],
@@ -151,6 +152,20 @@ export async function encodeShareUrl(wheelOrPayload, baseUrl = getShareBaseUrl()
       : buildSharePayload(wheelOrPayload);
   const token = await encodeShareToken(payload);
   return `${baseUrl}#w=${token}`;
+}
+
+/** Results-only / simplified panel mode via `?play=1` (or `?view=play`). */
+export function isPlayView(search = location.search) {
+  const params = new URLSearchParams(search);
+  return params.get("play") === "1" || params.get("view") === "play";
+}
+
+/** Ensure a share URL opens in results-only mode. */
+export function withPlayView(url) {
+  const u = new URL(url, location.href);
+  u.searchParams.set("play", "1");
+  u.searchParams.delete("view");
+  return u.toString();
 }
 
 export function getShareBaseUrl() {

@@ -511,6 +511,10 @@ input[type="range"] {
   color: var(--text);
 }
 
+.toggle[hidden] {
+  display: none !important;
+}
+
 .toggle input {
   width: 1.05rem;
   height: 1.05rem;
@@ -595,6 +599,24 @@ input[type="range"] {
 
 .wheel-dock .panel-heading {
   margin-bottom: 0.15rem;
+}
+
+.viewer-dock {
+  margin: 0 0 1.1rem;
+  padding: 0 0 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewer-dock .btn {
+  width: 100%;
+}
+
+body.is-play-view [data-editor-only] {
+  display: none !important;
+}
+
+body.is-play-view .tabs {
+  grid-template-columns: 1fr;
 }
 
 .wheel-library {
