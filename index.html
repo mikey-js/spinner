@@ -89,21 +89,12 @@
           </section>
 
           <div class="tabs" id="panel-tabs" role="tablist">
-            <button type="button" class="tab active" data-tab="results" role="tab" aria-selected="true">Results</button>
-            <button type="button" class="tab" data-tab="entries" data-editor-only role="tab" aria-selected="false">Entries</button>
+            <button type="button" class="tab active" data-tab="entries" data-editor-only role="tab" aria-selected="true">Entries</button>
+            <button type="button" class="tab" data-tab="results" role="tab" aria-selected="false">Results</button>
             <button type="button" class="tab" data-tab="settings" data-editor-only role="tab" aria-selected="false">Settings</button>
           </div>
 
-          <div class="tab-pane active" id="tab-results" role="tabpanel">
-            <div class="row between">
-              <h2 class="panel-heading">Spin history</h2>
-              <button type="button" class="btn ghost" id="btn-clear-results">Clear</button>
-            </div>
-            <ol class="results-list" id="results-list"></ol>
-            <p class="empty" id="results-empty">No spins yet. Give the wheel a whirl.</p>
-          </div>
-
-          <div class="tab-pane" id="tab-entries" role="tabpanel" hidden data-editor-only>
+          <div class="tab-pane active" id="tab-entries" role="tabpanel" data-editor-only>
             <p class="panel-note" id="entries-lock-note" hidden>
               Default wheel from <code>/default</code> or a share link is session-only (not saved).
               Duplicate it into Your wheels to edit or keep it.
@@ -147,6 +138,15 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="tab-pane" id="tab-results" role="tabpanel" hidden>
+            <div class="row between">
+              <h2 class="panel-heading">Spin history</h2>
+              <button type="button" class="btn ghost" id="btn-clear-results">Clear</button>
+            </div>
+            <ol class="results-list" id="results-list"></ol>
+            <p class="empty" id="results-empty">No spins yet. Give the wheel a whirl.</p>
           </div>
 
           <div class="tab-pane" id="tab-settings" role="tabpanel" hidden data-editor-only>
