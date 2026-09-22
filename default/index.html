@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Loading default wheel…</title>
+    <script type="module">
+      import { builtinShareHash } from "../js/default-share-token.js";
+      // Domain-agnostic: go to the app root with the canonical #w= token.
+      const root = new URL("../", location.href);
+      location.replace(`${root.pathname}${root.search}${builtinShareHash()}`);
+    </script>
+  </head>
+  <body
+    style="
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0f1024;
+      color: #a7acc8;
+      font-family: system-ui, sans-serif;
+    "
+  >
+    <p>Loading default wheel…</p>
+  </body>
+</html>

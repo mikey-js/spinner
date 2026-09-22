@@ -1,0 +1,5 @@
+# Ignore OS / editor noise; keep the static site deployable as-is.
+.DS_Store
+*.log
+.idea/
+.vscode/
